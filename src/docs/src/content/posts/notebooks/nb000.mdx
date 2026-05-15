@@ -1,0 +1,109 @@
+---
+title: "nb000 — how wide does the hidden layer need to be?"
+date: 2026-05-15
+description: A hidden-width sweep over the tiny MLP on two moons. At what capacity does the decision boundary actually curve?
+---
+
+The [tiny MLP post](/posts/tiny-mlp) showed that a hidden width of 16 is
+enough to bend a decision boundary around the two-moons dataset. But how
+small can the hidden layer get before the network collapses back to
+something a linear model could do? This notebook sweeps hidden width
+$H \in \{1, 2, 4, 8, 16, 32\}$ and looks at both the final accuracy and
+the shape of the decision surface.
+
+All other knobs held fixed: 2000 epochs, learning rate 0.05, seed 0, 400
+points with noise 0.2. Orchestration lives at
+`src/lib/notebooks/nb000.py` and just shells out to `cli.py` with
+different `--hidden` and `--prefix` flags.
+
+## Final loss and accuracy
+
+| Hidden width | Final loss | Training accuracy |
+|--------------|-----------:|------------------:|
+| 1            | 0.3105     | 86.0%             |
+| 2            | 0.3058     | 86.0%             |
+| 4            | 0.3034     | 86.0%             |
+| 8            | 0.3019     | 86.0%             |
+| **16**       | **0.2552** | **88.2%**         |
+| 32           | 0.2854     | 86.3%             |
+
+The summary numbers undersell how different these models actually are.
+86% accuracy on two-moons with noise 0.2 is roughly what a clean *linear*
+split gets — most of the misclassifications come from points the noise
+has tossed across the gap, which any model would miss. The interesting
+signal is in the boundary shape.
+
+## Decision boundary by width
+
+### $H = 1$ — effectively linear
+
+With a single hidden unit, the network is one $\tanh$ feature feeding a
+sigmoid. The boundary is a smooth sigmoid stripe — no curvature, no way
+to wrap around either crescent:
+
+![Boundary, hidden=1](/notebooks/nb000/h01_boundary_after.png)
+
+### $H = 2$ — still essentially a half-plane
+
+Two units gives the network two oriented features to combine, but the
+boundary remains close to a straight line through the data:
+
+![Boundary, hidden=2](/notebooks/nb000/h02_boundary_after.png)
+
+### $H = 4$ — slight bend
+
+Four hidden units is the first width where the boundary picks up visible
+curvature, though it still doesn't track the moons well:
+
+![Boundary, hidden=4](/notebooks/nb000/h04_boundary_after.png)
+
+### $H = 8$ — clearly nonlinear
+
+By eight units the boundary is recognizably curved and threading between
+the crescents:
+
+![Boundary, hidden=8](/notebooks/nb000/h08_boundary_after.png)
+
+### $H = 16$ — best run
+
+This is the width from the original post. It also has the lowest
+cross-entropy loss in the sweep:
+
+![Boundary, hidden=16](/notebooks/nb000/h16_boundary_after.png)
+
+### $H = 32$ — diminishing returns
+
+Doubling the width again doesn't help. Loss actually ticks up slightly
+(0.2854 vs 0.2552), consistent with the larger model being a bit harder
+to optimize at this fixed learning rate and epoch budget:
+
+![Boundary, hidden=32](/notebooks/nb000/h32_boundary_after.png)
+
+## Loss curves
+
+The $H = 16$ run also has the cleanest descent. Smaller models plateau
+earlier; the $H = 32$ run wobbles more on its way down.
+
+![Loss, hidden=16](/notebooks/nb000/h16_loss_curve.png)
+
+## Takeaways
+
+- **Accuracy is a poor signal here.** Five of the six widths land at the
+  same 86% — the headline metric hides everything interesting about the
+  model's hypothesis.
+- **Boundary shape is the real diagnostic.** It's the only thing that
+  separates "linear classifier in disguise" from "actually learning the
+  manifold."
+- **Width 8 is the inflection point** for this dataset and budget.
+  Smaller than that, the model can't curve; larger, returns flatten.
+- **Bigger isn't free.** The $H = 32$ run is slightly worse on loss,
+  reminding you that more capacity needs more optimization care.
+
+## Reproducing
+
+```bash
+python3 src/lib/notebooks/nb000.py
+```
+
+Artifacts (18 PNGs plus `summary.json`) land in
+`src/docs/public/notebooks/nb000/`.

@@ -1,0 +1,65 @@
+---
+title: A tiny MLP that learns two moons
+date: 2026-05-15
+description: The smallest interesting neural network — one hidden layer, NumPy only, trained on the two-moons dataset.
+---
+
+What's the smallest neural network that still demonstrates something a linear
+model can't do? About fifty lines of NumPy: a two-layer MLP with a single
+hidden layer, trained with hand-written backprop on the classic *two moons*
+dataset. No autograd, no framework — just matrix multiplies and the chain
+rule.
+
+## The model
+
+The network is:
+
+$$
+\hat{y} = \sigma\!\left(\tanh(x W_1 + b_1)\, W_2 + b_2\right)
+$$
+
+with a hidden width of 16, optimized by gradient descent on binary
+cross-entropy:
+
+$$
+\mathcal{L} = -\frac{1}{N}\sum_i y_i \log \hat{y}_i + (1 - y_i)\log(1 - \hat{y}_i)
+$$
+
+The full implementation lives in `src/lib/cli.py` and exposes flags for
+sample count, noise, hidden width, epochs, learning rate, and seed.
+
+## Does it work?
+
+After 2000 epochs at learning rate 0.05 on 400 noisy points, final loss is
+**0.255** and training accuracy is **88.2%** — about what you'd expect given
+the noise floor of the dataset.
+
+### Loss curve
+
+The cross-entropy drops sharply in the first few hundred epochs and then
+settles into a slow grind, which is the usual shape for a small MLP on a
+small problem.
+
+![Training loss over 2000 epochs](/loss_curve.png)
+
+### Decision boundary, before and after
+
+The interesting plot is the decision surface. At initialization the network
+produces an arbitrary linear-ish split — it has learned nothing:
+
+![Decision boundary at epoch 0](/boundary_before.png)
+
+After training, the boundary curves between the two interleaved crescents.
+This is the part a logistic regressor *cannot* do, which is why two-moons is
+the standard sanity check for nonlinear classifiers:
+
+![Decision boundary at epoch 2000](/boundary_after.png)
+
+## Reproducing
+
+```bash
+python3 src/lib/cli.py --epochs 2000 --hidden 16 --lr 0.05
+```
+
+Plots are written to `src/docs/public/`, which is why they show up in this
+post without any extra wiring.

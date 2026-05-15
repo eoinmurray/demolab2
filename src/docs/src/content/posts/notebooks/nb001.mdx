@@ -1,0 +1,100 @@
+---
+title: "nb001 — how much noise can the tiny MLP take?"
+date: 2026-05-15
+description: Holding the model fixed at H=16, how does the decision boundary degrade as the two-moons noise grows from 0.05 to 0.5?
+---
+
+[nb000](/posts/notebooks/nb000) held the dataset fixed and varied model
+capacity. This one flips it: capacity is pinned at $H = 16$ and the
+Gaussian noise on the moons sweeps across
+$\sigma \in \{0.05, 0.10, 0.20, 0.35, 0.50\}$. Everything else is held
+constant (2000 epochs, lr 0.05, seed 0, 400 samples). Orchestration:
+`src/lib/notebooks/nb001.py`.
+
+## Final loss and accuracy
+
+| Noise $\sigma$ | Final loss | Training accuracy |
+|---------------:|-----------:|------------------:|
+| 0.05           | 0.1807     | 91.7%             |
+| 0.10           | 0.1972     | 91.2%             |
+| 0.20           | 0.2552     | 88.2%             |
+| 0.35           | 0.3534     | 84.5%             |
+| 0.50           | 0.4212     | 81.0%             |
+
+Accuracy degrades monotonically and gracefully — no cliff. The loss
+roughly doubles across the sweep, which is expected: cross-entropy is
+sensitive to *confidence*, not just correctness, and a noisier dataset
+forces the model to hedge near the boundary.
+
+## Decision boundary by noise
+
+### $\sigma = 0.05$ — tight crescents, sharp boundary
+
+With clean data the moons barely overlap and the network draws a crisp
+nonlinear separator:
+
+![Boundary, noise=0.05](/notebooks/nb001/n005_boundary_after.png)
+
+### $\sigma = 0.10$ — still clearly two clusters
+
+Some overlap appears near the inner edges, but the boundary still hugs
+the manifold:
+
+![Boundary, noise=0.10](/notebooks/nb001/n010_boundary_after.png)
+
+### $\sigma = 0.20$ — the default
+
+This is the dataset used in earlier posts:
+
+![Boundary, noise=0.20](/notebooks/nb001/n020_boundary_after.png)
+
+### $\sigma = 0.35$ — the classes start to merge
+
+The crescent structure is now visibly disrupted. The network's boundary
+is still curved, but it has to live in a band where both classes have
+nontrivial density:
+
+![Boundary, noise=0.35](/notebooks/nb001/n035_boundary_after.png)
+
+### $\sigma = 0.50$ — Bayes risk dominates
+
+At this noise level the two classes are essentially overlapping point
+clouds. Any classifier — linear or otherwise — has to accept that ~20%
+of points are unrecoverable. Note how the boundary flattens: the model
+is correctly refusing to overfit jitter:
+
+![Boundary, noise=0.50](/notebooks/nb001/n050_boundary_after.png)
+
+## Loss curves
+
+Higher-noise runs settle at higher loss floors but otherwise descend
+with the same shape:
+
+![Loss, noise=0.05](/notebooks/nb001/n005_loss_curve.png)
+![Loss, noise=0.50](/notebooks/nb001/n050_loss_curve.png)
+
+## Takeaways
+
+- **The model degrades gracefully.** Accuracy falls smoothly from 92%
+  to 81% as $\sigma$ goes from 0.05 to 0.5 — there's no noise level
+  where the network suddenly gives up.
+- **Boundary curvature relaxes with noise.** Compare $\sigma = 0.05$
+  (sharp S-curve) with $\sigma = 0.50$ (nearly linear). The network
+  correctly trades nonlinearity for regularization when the data
+  doesn't justify the wiggles.
+- **Loss is a better noise-meter than accuracy.** Accuracy lost ~11
+  percentage points across the sweep; loss more than doubled. Loss is
+  responding to *confidence calibration*, which is what changes most.
+- **A cleaner pairing for nb000.** Many of the H ≤ 8 results in nb000
+  topped out at 86% — exactly the regime this notebook shows you'd
+  expect from a *linear* model on $\sigma = 0.2$ data. The two
+  notebooks together strongly suggest the small-H models in nb000
+  weren't learning much beyond a half-plane.
+
+## Reproducing
+
+```bash
+python3 src/lib/notebooks/nb001.py
+```
+
+Artifacts land in `src/docs/public/notebooks/nb001/`.

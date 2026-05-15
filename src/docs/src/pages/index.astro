@@ -1,0 +1,43 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const all = (await getCollection('posts')).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+const isNotebook = (id: string) => id.startsWith('notebooks/');
+const articles = all.filter((p) => !isNotebook(p.id));
+const notebooks = all.filter((p) => isNotebook(p.id));
+---
+<Base title="Notes">
+  <h1 class="text-2xl font-serif mb-2">Eoin Murray</h1>
+  <p class="text-neutral-600 mb-12">Notes and writing.</p>
+
+  <section class="mb-12">
+    <h2 class="text-xs uppercase tracking-widest text-neutral-500 mb-4">Articles</h2>
+    <ul class="space-y-3">
+      {articles.map((post) => (
+        <li class="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+          <a href={`${import.meta.env.BASE_URL}/posts/${post.id}/`.replace(/\/+/g, '/')} class="hover:underline">{post.data.title}</a>
+          <time class="text-neutral-500 text-sm tabular-nums shrink-0" datetime={post.data.date.toISOString()}>
+            {post.data.date.toISOString().slice(0, 10)}
+          </time>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section>
+    <h2 class="text-xs uppercase tracking-widest text-neutral-500 mb-4">Notebooks</h2>
+    <ul class="space-y-3">
+      {notebooks.map((post) => (
+        <li class="flex justify-between gap-4 border-b border-neutral-100 pb-3">
+          <a href={`${import.meta.env.BASE_URL}/posts/${post.id}/`.replace(/\/+/g, '/')} class="hover:underline font-mono text-sm">{post.data.title}</a>
+          <time class="text-neutral-500 text-sm tabular-nums shrink-0" datetime={post.data.date.toISOString()}>
+            {post.data.date.toISOString().slice(0, 10)}
+          </time>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
